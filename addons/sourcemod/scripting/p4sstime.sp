@@ -49,7 +49,7 @@ int  			eiJack;
 int  			eiPassTarget;
 int 			ibBallSpawnedLower;
 int 			iRoundResetTick;
-int 			iWinStratDistance;
+int 			iWinStratDistance = 450;
 int 			eiDeathBomber;
 //int  			trikzProjCollideCurVal;
 //int  			trikzProjCollideSave = 2;
@@ -161,20 +161,19 @@ public void OnPluginStart()
 }
 
 //#include <p4sstime/trikz.sp>
-#include <p4sstime/logs.sp>
-#include <p4sstime/pass_menu.sp>
-#include <p4sstime/practice.sp>
-#include <p4sstime/anticheat.sp>
-#include <p4sstime/convars.sp>
-#include <p4sstime/stats_print.sp>
-#include <p4sstime/f2stocks.sp>
+#include "p4sstime/logs.sp"
+#include "p4sstime/pass_menu.sp"
+#include "p4sstime/practice.sp"
+#include "p4sstime/anticheat.sp"
+#include "p4sstime/convars.sp"
+#include "p4sstime/stats_print.sp"
+#include "p4sstime/f2stocks.sp"
 
 public void OnMapInit(const char[] mapName)
 {
+	// this requires a changelevel!
 	if(StrContains(mapName, "stadium") != -1) // stadium has much lower top spawner so do this to avoid false positive win strats
-		iWinStratDistance = 150;
-	else
-		iWinStratDistance = 300;
+		iWinStratDistance = 200;
 }
 
 public void OnMapStart() // getgoallocations
@@ -485,10 +484,21 @@ Action Event_PassGet(Event event, const char[] name, bool dontBroadcast)
 		arriPlyRoundPassStats[iPlyWhoGotJack].iPlyFirstGrabs++;
 		arrbPanaceaCheck[iPlyWhoGotJack] = true;
 		GetClientAbsOrigin(iPlyWhoGotJack, position);
-		if(GetVectorDistance(position, fTopSpawnPos, false) < iWinStratDistance) // may need to be changed
+		float distanceFromTopSpawner = GetVectorDistance(position, fTopSpawnPos, false);
+		LogToGame("Panacea check - Distance from top spawner: %.0f, Cutoff distance for winstrat: %i", distanceFromTopSpawner, iWinStratDistance);
+		if(distanceFromTopSpawner < iWinStratDistance) // may need to be changed
 			{
 				arrbPanaceaCheck[iPlyWhoGotJack] = false;
 				arrbWinStratCheck[iPlyWhoGotJack] = true;
+				// KILL winstratter
+				SDKHooks_TakeDamage(iPlyWhoGotJack, iPlyWhoGotJack, iPlyWhoGotJack, 500.0);
+				char winstratterName[MAX_NAME_LENGTH];
+				GetClientName(iPlyWhoGotJack, winstratterName, sizeof(winstratterName));
+				for (int x = 1; x < MaxClients + 1; x++)
+				{
+					if(!IsValidClient(x) || IsClientSourceTV(x)) continue;
+					PrintToChat(x, "\x0700ffff[PASS] \x0700ffff%s\x073BC43B tried to \x078aed8awin strat.", winstratterName);
+				}
 			}
 	}
 	else
