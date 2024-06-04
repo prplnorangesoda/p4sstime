@@ -6,7 +6,7 @@
 #pragma semicolon 1	   // required for logs.tf
 #pragma newdecls required
 
-#define VERSION "2.2.0"
+#define VERSION "2.2.1"
 
 enum struct enubPlyJackSettings
 {
@@ -40,7 +40,7 @@ enuiPlyRoundStats	arriPlyRoundPassStats[MAXPLAYERS + 1];
 
 float			fBluGoalPos[3], fRedGoalPos[3], fTopSpawnPos[3], fFreeBallPos[3];
 
-ConVar			bEquipStockWeapons, bSwitchDuringRespawn, bStealBlurryOverlay, bDroppedItemsCollision, bPrintStats, /*trikzEnable, trikzProjCollide, trikzProjDev*/bPracticeMode;
+ConVar			bEquipStockWeapons, bSwitchDuringRespawn, bStealBlurryOverlay, bDroppedItemsCollision, bPrintStats, bWinstratKills, /*trikzEnable, trikzProjCollide, trikzProjDev*/bPracticeMode;
 
 int				iPlyWhoGotJack;
 // int			plyDirecter;
@@ -49,7 +49,7 @@ int  			eiJack;
 int  			eiPassTarget;
 int 			ibBallSpawnedLower;
 int 			iRoundResetTick;
-int 			iWinStratDistance = 450;
+int 			iWinStratDistance;
 int 			eiDeathBomber;
 //int  			trikzProjCollideCurVal;
 //int  			trikzProjCollideSave = 2;
@@ -79,10 +79,10 @@ char moreurl[128];
 public Plugin myinfo =
 {
 	name		= "4v4 PASS Time Extension",
-	author		= "blake++",
-	description = "The main plugin for 4v4 Competitive PASS Time.",
+	author		= "blake++ (lxdi fork)",
+	description = "The main plugin for 4v4 Competitive PASS Time. This version was forked from https://github.com/blakeplusplus/p4sstime/.`",
 	version		= VERSION,
-	url			= "https://github.com/blakeplusplus/p4sstime"
+	url			= "https://github.com/prplnorangesoda/p4sstime/releases"
 };
 
 public void OnPluginStart()
@@ -137,6 +137,7 @@ public void OnPluginStart()
 	bDroppedItemsCollision 	= CreateConVar("sm_pt_disable_jack_drop_item_collision", "1", "If 1, disables the jack colliding with dropped ammo packs or weapons.", FCVAR_NOTIFY);
 	bPrintStats		 		= CreateConVar("sm_pt_print_events", "0", "If 1, enables printing of passtime events to chat both during and after games. Does not affect logging.", FCVAR_NOTIFY);
 	bPracticeMode	 		= CreateConVar("sm_pt_practice", "0", "If 1, enables practice mode. When the round timer reaches 5 minutes, add 5 minutes to the timer.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	bWinstratKills 		= CreateConVar("sm_pt_winstrat_kills", "0", "If 1, kills winstratters and prints \"tried to winstrat\" in chat.", FCVAR_NOTIFY);
 
 	//trikzEnable	 = CreateConVar("sm_pt_trikz", "0", "Set 'trikz' mode. 1 adds friendly knockback for airshots, 2 adds friendly knockback for splash damage, 3 adds friendly knockback for everywhere", FCVAR_NOTIFY, true, 0.0, true, 3.0);
 	//trikzProjCollide = CreateConVar("sm_pt_trikz_projcollide", "2", "Manually set team projectile collision behavior when trikz is on. 2 always collides, 1 will cause your projectiles to phase through if you are too close (default game behavior), 0 will cause them to never collide.", 0, true, 0.0, true, 2.0);
@@ -158,6 +159,18 @@ public void OnPluginStart()
 		}
 		OnClientCookiesCached(i);
 	}
+
+	char sMapNameBuffer[256];
+	GetCurrentMap(sMapNameBuffer, 256);
+	// check if stadium is the current map in order to set the height lower
+	// see OnMapInit
+	// this is necessary as OnMapInit is not called when the plugin is ran
+	if (StrContains(sMapNameBuffer, "stadium", false)) {
+		iWinStratDistance = 150;
+	}
+	else {
+		iWinStratDistance = 400;
+	}
 }
 
 //#include <p4sstime/trikz.sp>
@@ -171,9 +184,10 @@ public void OnPluginStart()
 
 public void OnMapInit(const char[] mapName)
 {
-	// this requires a changelevel!
-	if(StrContains(mapName, "stadium") != -1) // stadium has much lower top spawner so do this to avoid false positive win strats
-		iWinStratDistance = 200;
+	if(StrContains(mapName, "stadium", false) != -1) // stadium has much lower top spawner so do this to avoid false positive win strats
+		iWinStratDistance = 150;
+	else
+		iWinStratDistance = 400;
 }
 
 public void OnMapStart() // getgoallocations
@@ -490,14 +504,13 @@ Action Event_PassGet(Event event, const char[] name, bool dontBroadcast)
 			{
 				arrbPanaceaCheck[iPlyWhoGotJack] = false;
 				arrbWinStratCheck[iPlyWhoGotJack] = true;
-				// KILL winstratter
-				SDKHooks_TakeDamage(iPlyWhoGotJack, iPlyWhoGotJack, iPlyWhoGotJack, 500.0);
-				char winstratterName[MAX_NAME_LENGTH];
-				GetClientName(iPlyWhoGotJack, winstratterName, sizeof(winstratterName));
-				for (int x = 1; x < MaxClients + 1; x++)
-				{
-					if(!IsValidClient(x) || IsClientSourceTV(x)) continue;
-					PrintToChat(x, "\x0700ffff[PASS] \x0700ffff%s\x073BC43B tried to \x078aed8awin strat.", winstratterName);
+
+				if(bWinstratKills.BoolValue) {
+					// KILL winstratter
+					SDKHooks_TakeDamage(iPlyWhoGotJack, iPlyWhoGotJack, iPlyWhoGotJack, 500.0);
+					char winstratterName[MAX_NAME_LENGTH];
+					GetClientName(iPlyWhoGotJack, winstratterName, sizeof(winstratterName));
+					PrintToChatAll("\x0700ffff[PASS] \x0700ffff%s\x073BC43B tried to \x078aed8awin strat.", winstratterName);
 				}
 			}
 	}
