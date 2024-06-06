@@ -58,6 +58,7 @@ sm_pt_disable_intercept_blur                1/0    # If 1, disable blurry screen
 sm_pt_disable_jack_drop_item_collision      1/0    # If 1, disables the jack colliding with dropped ammo packs or weapons.
 sm_pt_print_events                          0/1    # If 1, enables printing of passtime events to chat both during and after games. Does not affect logging.
 sm_pt_practice                              0/1    # If 1, enables practice mode. When the round timer reaches 5 minutes, add 5 minutes to the timer.
+sm_pt_winstrat_kills                        0/1    # If 1, kills winstratters and prints "tried to winstrat" in chat.
 ```
 
 ### Logs Example
